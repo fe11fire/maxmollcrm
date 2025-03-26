@@ -21,3 +21,5 @@ Route::get('/warehouses', WarehouseController::class);
 Route::get('/stocks', StockController::class);
 
 Route::get('/orders', [OrderController::class, 'index']);
+
+Route::post('/order', [OrderController::class, 'create']);
