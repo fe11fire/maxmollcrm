@@ -1,0 +1,51 @@
+services:
+  php:
+    build: 
+      dockerfile: docker/php/Dockerfile
+    volumes:
+      - './maxmollcrm:/var/www/html'
+  nginx:
+    image: nginx:stable-alpine
+    ports:
+      - 8000:80
+    volumes:
+      - './maxmollcrm:/var/www/html'
+      - './docker/nginx/conf.d:/etc/nginx/conf.d'
+    depends_on:
+      - mysql
+      - php
+      - phpmyadmin
+
+  mysql:
+    image: mysql:8
+    ports:
+      - 3316:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=maxmollcrm
+      - MYSQL_USER=laravel
+      - MYSQL_PASSWORD=password
+    volumes:
+      - './docker/volume/mysql:/var/lib/mysql'
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - 9090:80
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+
+  artisan:
+    build: 
+      dockerfile: docker/php/Dockerfile
+    volumes:
+      - './maxmollcrm:/var/www/html'
+    entrypoint: ["php", "/var/www/html/artisan"]
+
+  composer:
+    build: 
+      dockerfile: docker/composer/Dockerfile
+    volumes:
+      - './maxmollcrm:/var/www/html'
+  

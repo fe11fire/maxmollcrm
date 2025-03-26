@@ -1,0 +1,28 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Warehouse;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Config;
+
+/**
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Order>
+ */
+class OrderFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        $warehouses = Warehouse::pluck('id')->toArray();
+        return [
+            'customer' => fake()->name(),
+            'warehouse_id' => fake()->randomElement($warehouses),
+            'status' => fake()->randomElement(Config::get('custom.enums.status')),
+        ];
+    }
+}
