@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Enums\Status;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Config;
@@ -16,7 +17,7 @@ return new class extends Migration
             $table->id()->unsigned();
             $table->string('customer', length: 255);
             $table->timestamp('completed_at')->nullable();
-            $table->enum('status', Config::get('custom.enums.status'));
+            $table->enum('status', Status::cases())->default(Status::ACTIVE->value);
             $table->timestamps();
         });
     }

@@ -11,11 +11,22 @@ class OrderController extends Controller
 {
     public function index(OrderFormRequest $request)
     {
-        dd($request->validated());
-        $validated = $request->validated();
-        // $orders = Order::paginate($request->input('per_page', default: 5));
+        $orders = Order::select();
+        if ($request->safe()->input('status') !== null) {
+            $orders = $orders->where('status', $request->safe()->input('status'));
+        }
+        if ($request->safe()->input('customer') !== null) {
+            $orders = $orders->where('customer', 'LIKE', '%' . $request->safe()->input('customer') . '%');
+        }
 
+        return new OrderCollection(
+            $orders->paginate($request->safe()->input('per_page', default: 5))
+        );
+    }
 
-        return new OrderCollection(Order::paginate($request->safe()->input('per_page', default: 5)));
+    public function create(Request $request)
+    {
+
+        dd(json_decode($request->items));
     }
 }
