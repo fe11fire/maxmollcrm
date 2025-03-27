@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Ramsey\Uuid\Type\Integer;
 
 class Stock extends Model
 {
@@ -25,6 +26,11 @@ class Stock extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function sum()
+    {
+        return $this->with('warehouse');
     }
 
     protected $hidden = [
