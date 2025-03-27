@@ -2,7 +2,10 @@
 
 namespace Database\Seeders;
 
+use Exception;
 use App\Models\Stock;
+use App\Models\Product;
+use App\Models\Warehouse;
 use Illuminate\Database\Seeder;
 
 class StockSeeder extends Seeder
@@ -12,6 +15,30 @@ class StockSeeder extends Seeder
      */
     public function run(): void
     {
-        Stock::factory()->count(50)->create();
+        $warehouses = Warehouse::pluck('id')->toArray();
+        $products = Product::pluck('id')->toArray();
+
+        if (
+            (count($products) == 0) ||
+            (count($warehouses) == 0)
+        ) {
+            throw new Exception("empty StockFactory fks", 1);
+        }
+
+        for ($i = 0; $i < 50; $i++) {
+            $warehouse_id = fake()->randomElement($warehouses);
+            $product_id = fake()->randomElement($products);
+
+            if (Stock::where('warehouse_id', $warehouse_id)->where('product_id', $product_id)->exists()) {
+                continue;
+            }
+
+            Stock::create([
+                'warehouse_id' => $warehouse_id,
+                'product_id' => $product_id,
+                'stock' => random_int(1, 100),
+            ]);
+        }
+        // Stock::factory()->count(50)->create();
     }
 }

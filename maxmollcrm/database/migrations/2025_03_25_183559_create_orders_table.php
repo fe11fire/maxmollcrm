@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id()->unsigned();
             $table->string('customer', length: 255);
             $table->timestamp('completed_at')->nullable();
-            $table->enum('status', Status::cases())->default(Status::ACTIVE->value);
+            $table->enum('status', Status::values())->default(Status::ACTIVE->value);
             $table->timestamps();
         });
     }
