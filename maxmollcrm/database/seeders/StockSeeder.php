@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\HistoryStock;
 use Exception;
 use App\Models\Stock;
 use App\Models\Product;
@@ -28,16 +29,27 @@ class StockSeeder extends Seeder
         for ($i = 0; $i < 50; $i++) {
             $warehouse_id = fake()->randomElement($warehouses);
             $product_id = fake()->randomElement($products);
+            $stock = random_int(1, 100);
 
             if (Stock::where('warehouse_id', $warehouse_id)->where('product_id', $product_id)->exists()) {
                 continue;
             }
 
+
             Stock::create([
                 'warehouse_id' => $warehouse_id,
                 'product_id' => $product_id,
-                'stock' => random_int(1, 100),
+                'stock' => $stock,
             ]);
+
+            HistoryStock::create(
+                [
+                    'warehouse_id' => $warehouse_id,
+                    'product_id' => $product_id,
+                    'stock' => $stock,
+                    'diff' => $stock,
+                ]
+            );
         }
         // Stock::factory()->count(50)->create();
     }

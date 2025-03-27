@@ -23,3 +23,11 @@ Route::get('/stocks', StockController::class);
 Route::get('/orders', [OrderController::class, 'index']);
 
 Route::post('/order', [OrderController::class, 'create']);
+
+Route::put('/order', [OrderController::class, 'update']);
+
+Route::put('/order/complete', [OrderController::class, 'complete']);
+
+Route::put('/order/cancel', [OrderController::class, 'cancel']);
+
+Route::put('/order/resume', [OrderController::class, 'resume']);

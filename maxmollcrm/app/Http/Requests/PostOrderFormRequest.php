@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Services\Enums\Status;
-use Illuminate\Validation\Rules\Enum;
 use Illuminate\Foundation\Http\FormRequest;
 
 class PostOrderFormRequest extends FormRequest
