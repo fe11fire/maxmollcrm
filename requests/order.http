@@ -4,7 +4,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-    "customer": "Demo User",
+    "customer": "Demo User 1",
     "items" : [{"id": 1, "count": 1}, {"id": 2, "count": 1}]
 }
 
@@ -14,7 +14,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-    "customer": "Demo User",
+    "customer": "Demo User 2",
     "items" : [{"id": 6, "count": 1}]
 }
 
@@ -24,7 +24,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-    "id": 13
+    "id": 1
 }
 
 ### Cancel order
@@ -33,7 +33,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-    "id": 13
+    "id": 1
 }
 
 ### Complete order
@@ -42,27 +42,27 @@ Content-Type: application/json
 Accept: application/json
 
 {
-    "id": 2
+    "id": 1
 }
 
-### Update order
+### Update order 1
 PUT http://maxmollcrm/api/v1/order
 Content-Type: application/json
 Accept: application/json
 
 {
     "id": 1,
-    "customer": "Demo User 8",
+    "customer": "Demo User 1_1",
     "items" : [{"id": 4, "count": 3}]
 }
 
-### Update order
+### Update order 2
 PUT http://maxmollcrm/api/v1/order
 Content-Type: application/json
 Accept: application/json
 
 {
-    "id": 1,
-    "customer": "Demo User 2",
+    "id": 2,
+    "customer": "Demo User 2_1",
     "items" : [{"id": 1, "count": 2}, {"id": 2, "count": 3},{"id": 4, "count": 4}]
 }

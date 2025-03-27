@@ -33,12 +33,13 @@ class PutOrderFormRequest extends FormRequest
     public function messages()
     {
         return [
-            'id.required' => 'Order_id not found',
+            'id.required' => 'order_id required',
             'id.*' => 'Order not isset',
-            'items' => 'items',
-            'customer' => 'customer',
-            'items.*.id.required' => 'items id required',
-            'items.*.id.*' => 'not isset',
+            'items' => 'Product must be array of objects {product_id, count}',
+            'customer' => 'Customer must be string or null',
+            'items.*.id.required' => 'product_id required',
+            'items.*.id.*' => 'Product not isset',
+            'items.*.count' => 'Count must be greater than 0',
         ];
     }
 }

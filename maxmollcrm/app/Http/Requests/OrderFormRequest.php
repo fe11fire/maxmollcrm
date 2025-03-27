@@ -24,10 +24,19 @@ class OrderFormRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'customer' => 'nullable|string',
+            'status' => ['nullable', new Enum(OrderStatus::class)],
             'per_page' => 'nullable|integer|gt:0',
             'page' => 'nullable|integer|gt:0',
-            'customer' => 'nullable|string',
-            'status' => ['nullable', new Enum(OrderStatus::class)]
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+            'customer.required' => 'Customer required',
+            'customer.*' => 'Customer must be string',
+            'status.*' => 'Status must be correct value',
         ];
     }
 }

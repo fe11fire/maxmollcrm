@@ -1,0 +1,11 @@
+### Get history
+GET http://maxmollcrm/api/v1/stocks/history
+Content-Type: application/json
+Accept: application/json
+
+{
+    "product_id": 1,
+    "warehouse_id": 1,
+    "period_start": "2025-03",
+    "period_end": "2025-04"
+}

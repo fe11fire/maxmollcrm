@@ -9,12 +9,15 @@ use App\Models\OrderItem;
 use App\Models\Warehouse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use App\Actions\Order\CancelAction;
+use App\Actions\Order\ResumeAction;
+use App\Services\Enums\OrderStatus;
+use App\Actions\Order\CompleteAction;
 use App\Http\Requests\OrderFormRequest;
 use App\Http\Resources\OrderCollection;
 use App\Http\Requests\PutOrderFormRequest;
 use App\Http\Requests\PostOrderFormRequest;
-use App\Services\Enums\OrderStatus;
-use Carbon\Carbon;
+
 
 class OrderController extends Controller
 {
@@ -33,70 +36,34 @@ class OrderController extends Controller
         );
     }
 
-    public function resume(PutOrderFormRequest $request)
+    public function getResume(ResumeAction $action, $id)
     {
-        try {
-            DB::transaction(function () use ($request) {
-                $order = Order::findOrFail($request->id);
-
-                if ($order->status != OrderStatus::CANCELED->value) {
-                    throw new Exception('Order not canceled');
-                }
-
-                $items = OrderItem::where('order_id', $order->id)->get();
-
-                foreach ($items as $order_item) {
-                    $stocks = Stock::where('product_id', $order_item->product_id)->get();
-                    if ($stocks->sum('stock') < $order_item->count) {
-                        throw new Exception('Not enouth stocks of product = ' . $order_item->product_id);
-                    }
-
-                    Stock::subStocks($order_item->product_id, $order_item->count, $order->id);
-                }
-
-                $order->update(['status' => OrderStatus::ACTIVE->value]);
-            });
-        } catch (Exception $e) {
-            return response($e->getMessage(), 400);
-        }
-        return response(status: 200);
+        return $action($id);
     }
 
-    public function cancel(PutOrderFormRequest $request)
+    public function resume(ResumeAction $action, PutOrderFormRequest $request)
     {
-        try {
-            $order = Order::findOrFail($request->id);
-
-            if ($order->status != OrderStatus::ACTIVE->value) {
-                throw new Exception('Order not active');
-            }
-
-            $canceled_items = OrderItem::where('order_id', $order->id)->get();
-            foreach ($canceled_items as $order_item) {
-                Stock::diffStocks($order_item, -$order_item->count);
-            }
-
-            $order->update(['status' => OrderStatus::CANCELED->value]);
-        } catch (Exception $e) {
-            return response($e->getMessage(), 400);
-        }
-        return response(status: 200);
+        return $action($request->safe()->id);
     }
 
-    public function complete(PutOrderFormRequest $request)
+    public function getCancel(CancelAction $action, $id)
     {
-        try {
-            $order = Order::findOrFail($request->id);
+        return $action($id);
+    }
 
-            if ($order->status != OrderStatus::ACTIVE->value) {
-                throw new Exception('Order not active');
-            }
+    public function cancel(CancelAction $action, PutOrderFormRequest $request)
+    {
+        return $action($request->safe()->id);
+    }
 
-            $order->update(['status' => OrderStatus::COMPLETED->value, 'completed_at' => Carbon::now()->format('Y-m-d H:i:s')]);
-        } catch (Exception $e) {
-            return response($e->getMessage(), 400);
-        }
-        return response(status: 200);
+    public function getComplete(CompleteAction $action, $id)
+    {
+        return $action($id);
+    }
+
+    public function complete(CompleteAction $action, PutOrderFormRequest $request)
+    {
+        return $action($request->safe()->id);
     }
 
     public function update(PutOrderFormRequest $request)
