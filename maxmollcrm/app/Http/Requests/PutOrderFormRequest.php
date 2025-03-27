@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class PostOrderFormRequest extends FormRequest
+class PutOrderFormRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,18 +22,20 @@ class PostOrderFormRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer' => 'required|string',
-            'items' => 'required|array',
+            'id' => 'required|exists:orders,id',
+            'customer' => 'nullable|string',
+            'items' => 'nullable|array',
             'items.*.id' => 'required|exists:products',
             'items.*.count' => 'gt:0',
-            'warehouse_id' => 'nullable|exists:warehouses,id',
         ];
     }
 
     public function messages()
     {
         return [
-            'items' => 'json',
+            'id.required' => 'Order_id not found',
+            'id.*' => 'Order not isset',
+            'items' => 'items',
             'customer' => 'customer',
             'items.*.id.required' => 'items id required',
             'items.*.id.*' => 'not isset',

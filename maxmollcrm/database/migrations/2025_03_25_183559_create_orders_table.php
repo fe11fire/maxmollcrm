@@ -1,9 +1,8 @@
 <?php
 
-use App\Services\Enums\Status;
+use App\Services\Enums\OrderStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -17,7 +16,7 @@ return new class extends Migration
             $table->id()->unsigned();
             $table->string('customer', length: 255);
             $table->timestamp('completed_at')->nullable();
-            $table->enum('status', Status::values())->default(Status::ACTIVE->value);
+            $table->enum('status', OrderStatus::values())->default(OrderStatus::ACTIVE->value);
             $table->timestamps();
         });
     }

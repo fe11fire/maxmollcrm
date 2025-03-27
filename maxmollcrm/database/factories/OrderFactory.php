@@ -3,9 +3,8 @@
 namespace Database\Factories;
 
 use App\Models\Warehouse;
-use App\Services\Enums\Status;
+use App\Services\Enums\OrderStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Facades\Config;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Order>
@@ -23,7 +22,7 @@ class OrderFactory extends Factory
         return [
             'customer' => fake()->name(),
             'warehouse_id' => fake()->randomElement($warehouses),
-            'status' => fake()->randomElement(Status::cases()),
+            'status' => fake()->randomElement(OrderStatus::cases()),
         ];
     }
 }

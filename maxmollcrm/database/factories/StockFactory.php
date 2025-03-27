@@ -24,7 +24,8 @@ class StockFactory extends Factory
         return [
             'warehouse_id' => fake()->randomElement($warehouses),
             'product_id' => fake()->randomElement($products),
-            'stock' => fake()->numberBetween(1, 100),
+            'stock' => 2,
+            // 'stock' => fake()->numberBetween(1, 100),
         ];
     }
 }

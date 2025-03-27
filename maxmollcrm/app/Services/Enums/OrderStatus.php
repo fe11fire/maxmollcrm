@@ -2,15 +2,13 @@
 
 namespace App\Services\Enums;
 
+use App\Services\Traits\EnumToArray;
 
-enum Status: string
+enum OrderStatus: string
 {
+    use EnumToArray;
+
     case ACTIVE = 'active';
     case COMPLETED = 'completed';
     case CANCELED = 'canceled';
-
-    public static function values(): array
-    {
-        return array_column(self::cases(), 'value');
-    }
 }

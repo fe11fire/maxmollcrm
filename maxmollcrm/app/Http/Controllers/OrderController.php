@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use Exception;
 use App\Models\Order;
-use Illuminate\Http\Request;
+use App\Models\Stock;
+use App\Models\OrderItem;
+use App\Models\Warehouse;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\OrderFormRequest;
 use App\Http\Resources\OrderCollection;
+use App\Http\Requests\PutOrderFormRequest;
 use App\Http\Requests\PostOrderFormRequest;
-use App\Models\Stock;
+use App\Services\Enums\OrderStatus;
+use Carbon\Carbon;
 
 class OrderController extends Controller
 {
@@ -27,38 +33,141 @@ class OrderController extends Controller
         );
     }
 
+    public function resume(PutOrderFormRequest $request)
+    {
+        try {
+            DB::transaction(function () use ($request) {
+                $order = Order::findOrFail($request->id);
+
+                if ($order->status != OrderStatus::CANCELED->value) {
+                    throw new Exception('Order not canceled');
+                }
+
+                $items = OrderItem::where('order_id', $order->id)->get();
+
+                foreach ($items as $order_item) {
+                    $stocks = Stock::where('product_id', $order_item->product_id)->get();
+                    if ($stocks->sum('stock') < $order_item->count) {
+                        throw new Exception('Not enouth stocks of product = ' . $order_item->product_id);
+                    }
+
+                    Stock::subStocks($order_item->product_id, $order_item->count, $order->id);
+                }
+
+                $order->update(['status' => OrderStatus::ACTIVE->value]);
+            });
+        } catch (Exception $e) {
+            return response($e->getMessage(), 400);
+        }
+        return response(status: 200);
+    }
+
+    public function cancel(PutOrderFormRequest $request)
+    {
+        try {
+            $order = Order::findOrFail($request->id);
+
+            if ($order->status != OrderStatus::ACTIVE->value) {
+                throw new Exception('Order not active');
+            }
+
+            $canceled_items = OrderItem::where('order_id', $order->id)->get();
+            foreach ($canceled_items as $order_item) {
+                Stock::diffStocks($order_item, -$order_item->count);
+            }
+
+            $order->update(['status' => OrderStatus::CANCELED->value]);
+        } catch (Exception $e) {
+            return response($e->getMessage(), 400);
+        }
+        return response(status: 200);
+    }
+
+    public function complete(PutOrderFormRequest $request)
+    {
+        try {
+            $order = Order::findOrFail($request->id);
+
+            if ($order->status != OrderStatus::ACTIVE->value) {
+                throw new Exception('Order not active');
+            }
+
+            $order->update(['status' => OrderStatus::COMPLETED->value, 'completed_at' => Carbon::now()->format('Y-m-d H:i:s')]);
+        } catch (Exception $e) {
+            return response($e->getMessage(), 400);
+        }
+        return response(status: 200);
+    }
+
+    public function update(PutOrderFormRequest $request)
+    {
+        try {
+            DB::transaction(function () use ($request) {
+                $order = Order::findOrFail($request->id);
+
+                if ($order->status != OrderStatus::ACTIVE->value) {
+                    throw new Exception('Order not active');
+                }
+
+                if (($items = $request->safe()->items) !== null) {
+                    $null_items = OrderItem::whereNotIn('product_id', Arr::pluck($items, 'id'))->where('order_id', $order->id)->get();
+                    foreach ($null_items as $order_item) {
+                        Stock::diffStocks($order_item, -$order_item->count);
+                        $order_item->delete();
+                    }
+
+                    foreach ($items as $item) {
+                        $order_item = OrderItem::where('product_id', $item['id'])->where('order_id', $order->id)->first();
+                        if ($order_item === null) {
+                            OrderItem::create([
+                                'order_id' => $order->id,
+                                'product_id' => $item['id'],
+                                'count' => $item['count'],
+                            ]);
+                        } else {
+                            if (($difference = ($item['count'] - $order_item->count)) <> 0) {
+                                Stock::diffStocks($order_item, $difference);
+                                $order_item->update(['count' => DB::raw('count + ' . $difference)]);
+                            }
+                        }
+                    }
+
+                    $order_item = OrderItem::where('product_id', $item['id'])->where('order_id', $order->id)->first();
+                }
+
+                if (($customer = $request->safe()->customer) !== null) {
+                    $order->update(['customer' => $customer]);
+                }
+            });
+        } catch (\Exception $e) {
+            return response($e->getMessage(), 400);
+        }
+        return response(status: 200);
+    }
+
     public function create(PostOrderFormRequest $request)
     {
-        foreach ($request->items as $product) {
-            $stocks = Stock::where('product_id', $product['id'])->with('warehouse')->get();
-            if ($stocks->sum('stock') < $product['count']) {
-                return false;
-            }
+        try {
+            DB::transaction(function () use ($request) {
+                $warehouse_id = $request->safe()->warehouse_id == null ? Warehouse::first()->id : $request->safe()->warehouse_id;
 
-            $i = 0;
-            $count = $product['count'];
-            while ($count > 0) {
-                $difference = min($count, $stocks[$i]->stock);
-                $count -= $difference;
-                Stock::where('product_id', $stocks[$i]->product_id)->where('stock', $stocks[$i]->stock)->where('warehouse_id', $stocks[$i]->warehouse_id)->decrement('stock', $difference);
-                $i++;
-            }
+                /** @var Order $order */
+                $order = Order::create([
+                    'warehouse_id' => $warehouse_id,
+                    'customer' => $request->customer,
+                ]);
 
+                foreach ($request->items as $product) {
+                    Stock::subStocks($product['id'], $product['count'], $order->id);
+                }
 
-            dd($stocks->sum('stock'));
-            dd(Stock::where('product_id', $product['id'])->with('warehouse')->get());
+                foreach ($request->items as $product) {
+                    $order->updateOrInsertItem($product['id'], $product['count']);
+                }
+            });
+        } catch (\Exception $e) {
+            return response($e->getMessage(), 400);
         }
-
-        DB::transaction(function () use ($request) {
-            foreach ($request->items as $product) {
-            }
-            // $alice = User::lockForUpdate()->find(1); // 'balance' => 100
-            // $bob = User::lockForUpdate()->find(2); // 'balance' => 0
-
-            // Bank::sendMoney($alice, $bob, 100); // true
-        });
-
-
-        dd($request->items);
+        return response(status: 200);
     }
 }
