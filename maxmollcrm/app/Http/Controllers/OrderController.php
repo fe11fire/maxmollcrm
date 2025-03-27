@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\OrderFormRequest;
 use App\Models\Order;
-use App\Http\Resources\OrderCollection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Http\Requests\OrderFormRequest;
+use App\Http\Resources\OrderCollection;
+use App\Http\Requests\PostOrderFormRequest;
+use App\Models\Stock;
 
 class OrderController extends Controller
 {
@@ -24,9 +27,38 @@ class OrderController extends Controller
         );
     }
 
-    public function create(Request $request)
+    public function create(PostOrderFormRequest $request)
     {
+        foreach ($request->items as $product) {
+            $stocks = Stock::where('product_id', $product['id'])->with('warehouse')->get();
+            if ($stocks->sum('stock') < $product['count']) {
+                return false;
+            }
 
-        dd(json_decode($request->items));
+            $i = 0;
+            $count = $product['count'];
+            while ($count > 0) {
+                $difference = min($count, $stocks[$i]->stock);
+                $count -= $difference;
+                Stock::where('product_id', $stocks[$i]->product_id)->where('stock', $stocks[$i]->stock)->where('warehouse_id', $stocks[$i]->warehouse_id)->decrement('stock', $difference);
+                $i++;
+            }
+
+
+            dd($stocks->sum('stock'));
+            dd(Stock::where('product_id', $product['id'])->with('warehouse')->get());
+        }
+
+        DB::transaction(function () use ($request) {
+            foreach ($request->items as $product) {
+            }
+            // $alice = User::lockForUpdate()->find(1); // 'balance' => 100
+            // $bob = User::lockForUpdate()->find(2); // 'balance' => 0
+
+            // Bank::sendMoney($alice, $bob, 100); // true
+        });
+
+
+        dd($request->items);
     }
 }

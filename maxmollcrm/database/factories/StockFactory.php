@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use Exception;
 use App\Models\Product;
 use App\Models\Warehouse;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -22,17 +21,10 @@ class StockFactory extends Factory
         $warehouses = Warehouse::pluck('id')->toArray();
         $products = Product::pluck('id')->toArray();
 
-        if (
-            (count($products) == 0) ||
-            (count($warehouses) == 0)
-        ) {
-            throw new Exception("empty StockFactory fks", 1);
-        }
-
         return [
             'warehouse_id' => fake()->randomElement($warehouses),
             'product_id' => fake()->randomElement($products),
-            'stock' => fake()->numberBetween(0, 100),
+            'stock' => fake()->numberBetween(1, 100),
         ];
     }
 }
