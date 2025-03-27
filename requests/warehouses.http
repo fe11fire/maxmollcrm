@@ -1,0 +1,6 @@
+@host = http://localhost:8000/api/v1
+
+### Get history
+GET {{host}}/warehouses
+Content-Type: application/json
+Accept: application/json

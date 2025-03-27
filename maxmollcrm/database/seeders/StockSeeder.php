@@ -29,7 +29,8 @@ class StockSeeder extends Seeder
         for ($i = 0; $i < 50; $i++) {
             $warehouse_id = fake()->randomElement($warehouses);
             $product_id = fake()->randomElement($products);
-            $stock = random_int(1, 100);
+            // $stock = random_int(1, 100);
+            $stock = 5;
 
             if (Stock::where('warehouse_id', $warehouse_id)->where('product_id', $product_id)->exists()) {
                 continue;
@@ -51,6 +52,5 @@ class StockSeeder extends Seeder
                 ]
             );
         }
-        // Stock::factory()->count(50)->create();
     }
 }

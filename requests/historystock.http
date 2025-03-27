@@ -1,5 +1,7 @@
+@host = http://localhost:8000/api/v1
+
 ### Get history
-GET http://maxmollcrm/api/v1/stocks/history
+GET {{host}}/stocks/history
 Content-Type: application/json
 Accept: application/json
 

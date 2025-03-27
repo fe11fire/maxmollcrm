@@ -2,7 +2,13 @@
 
 namespace App\Models;
 
+use App\QueryBuilders\HistoryStockQueryBuilder;
 use Illuminate\Database\Eloquent\Model;
+
+/**
+ * @method static HistoryStock | HistoryStockQueryBuilder query()
+ * 
+ */
 
 class HistoryStock extends Model
 {
@@ -14,4 +20,9 @@ class HistoryStock extends Model
         'stock',
         'status'
     ];
+
+    public function newEloquentBuilder($query): HistoryStockQueryBuilder
+    {
+        return new HistoryStockQueryBuilder($query);
+    }
 }

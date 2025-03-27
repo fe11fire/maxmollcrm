@@ -1,5 +1,7 @@
+@host = http://localhost:8000/api/v1
+
 ### Post order 1
-POST http://maxmollcrm/api/v1/order
+POST {{host}}/order
 Content-Type: application/json
 Accept: application/json
 
@@ -9,35 +11,45 @@ Accept: application/json
 }
 
 ### Post order 2
-POST http://maxmollcrm/api/v1/order
+POST {{host}}/order
 Content-Type: application/json
 Accept: application/json
 
 {
     "customer": "Demo User 2",
-    "items" : [{"id": 6, "count": 1}]
+    "items" : [{"id": 3, "count": 3}]
 }
 
 ### Resume order
-PUT http://maxmollcrm/api/v1/order/resume
+PUT {{host}}/order/resume
 Content-Type: application/json
 Accept: application/json
 
 {
     "id": 1
 }
+
+### Resume order (another version)
+GET {{host}}/order/1/resume
+Content-Type: application/json
+Accept: application/json
 
 ### Cancel order
-PUT http://maxmollcrm/api/v1/order/cancel
+PUT {{host}}/order/cancel
 Content-Type: application/json
 Accept: application/json
 
 {
     "id": 1
 }
+
+### Cancel order (another version)
+GET {{host}}/order/1/cancel
+Content-Type: application/json
+Accept: application/json
 
 ### Complete order
-PUT http://maxmollcrm/api/v1/order/complete
+PUT {{host}}/order/complete
 Content-Type: application/json
 Accept: application/json
 
@@ -45,24 +57,29 @@ Accept: application/json
     "id": 1
 }
 
+### Complete order (another version)
+GET {{host}}/order/1/complete
+Content-Type: application/json
+Accept: application/json
+
 ### Update order 1
-PUT http://maxmollcrm/api/v1/order
+PUT {{host}}/order
 Content-Type: application/json
 Accept: application/json
 
 {
     "id": 1,
     "customer": "Demo User 1_1",
-    "items" : [{"id": 4, "count": 3}]
+    "items" : [{"id": 1, "count": 2}]
 }
 
 ### Update order 2
-PUT http://maxmollcrm/api/v1/order
+PUT {{host}}/order
 Content-Type: application/json
 Accept: application/json
 
 {
     "id": 2,
     "customer": "Demo User 2_1",
-    "items" : [{"id": 1, "count": 2}, {"id": 2, "count": 3},{"id": 4, "count": 4}]
+    "items" : [{"id": 2, "count": 2}]
 }
