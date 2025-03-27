@@ -1,0 +1,68 @@
+### Post order 1
+POST http://maxmollcrm/api/v1/order
+Content-Type: application/json
+Accept: application/json
+
+{
+    "customer": "Demo User",
+    "items" : [{"id": 1, "count": 1}, {"id": 2, "count": 1}]
+}
+
+### Post order 2
+POST http://maxmollcrm/api/v1/order
+Content-Type: application/json
+Accept: application/json
+
+{
+    "customer": "Demo User",
+    "items" : [{"id": 6, "count": 1}]
+}
+
+### Resume order
+PUT http://maxmollcrm/api/v1/order/resume
+Content-Type: application/json
+Accept: application/json
+
+{
+    "id": 13
+}
+
+### Cancel order
+PUT http://maxmollcrm/api/v1/order/cancel
+Content-Type: application/json
+Accept: application/json
+
+{
+    "id": 13
+}
+
+### Complete order
+PUT http://maxmollcrm/api/v1/order/complete
+Content-Type: application/json
+Accept: application/json
+
+{
+    "id": 2
+}
+
+### Update order
+PUT http://maxmollcrm/api/v1/order
+Content-Type: application/json
+Accept: application/json
+
+{
+    "id": 1,
+    "customer": "Demo User 8",
+    "items" : [{"id": 4, "count": 3}]
+}
+
+### Update order
+PUT http://maxmollcrm/api/v1/order
+Content-Type: application/json
+Accept: application/json
+
+{
+    "id": 1,
+    "customer": "Demo User 2",
+    "items" : [{"id": 1, "count": 2}, {"id": 2, "count": 3},{"id": 4, "count": 4}]
+}
