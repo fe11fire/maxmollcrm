@@ -1,3 +1,5 @@
+@host = http://localhost:8000/api/v1
+
 ### Get all users
-GET http://maxmollcrm/api/v1/orders
+GET {{host}}/orders
 Content-Type: application/json

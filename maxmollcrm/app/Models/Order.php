@@ -4,7 +4,13 @@ namespace App\Models;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
+use App\QueryBuilders\OrderQueryBuilder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+/**
+ * @method static Order | OrderQueryBuilder query()
+ * 
+ */
 
 class Order extends Model
 {
@@ -20,15 +26,8 @@ class Order extends Model
         'completed_at'
     ];
 
-    public function updateOrInsertItem(int $product_id, int $count): void
+    public function newEloquentBuilder($query): OrderQueryBuilder
     {
-        DB::table('order_items')->updateOrInsert(
-            [
-                'order_id' => $this->id,
-                'product_id' => $product_id,
-                'count' => $count,
-            ],
-            ['count' => DB::raw('count + ' . $count)]
-        );
+        return new OrderQueryBuilder($query);
     }
 }
