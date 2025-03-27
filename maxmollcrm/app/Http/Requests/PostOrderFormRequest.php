@@ -33,10 +33,13 @@ class PostOrderFormRequest extends FormRequest
     public function messages()
     {
         return [
-            'items' => 'json',
-            'customer' => 'customer',
-            'items.*.id.required' => 'items id required',
-            'items.*.id.*' => 'not isset',
+            'customer.required' => 'Customer required',
+            'customer.*' => 'Customer must be string',
+            'items' => 'Product must be array of objects {product_id, count}',
+            'items.*.id.required' => 'product_id required',
+            'items.*.id.*' => 'Product not isset',
+            'items.*.count' => 'Count must be greater than 0',
+            'warehouse_id.*' => 'Warehouse not isset',
         ];
     }
 }

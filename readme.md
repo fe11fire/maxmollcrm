@@ -1,7 +1,18 @@
+#Maxmollcrm
+
+[Microcrm для торговли](https://docs.google.com/document/d/1WSVo8by4D13JUJKpB8m58itoHD_9YVRZXr2zr8sWa_U/edit?usp=drivesdk)
+
+## Оглавление
+- [Оглавление](#оглавление)
+- [Установка и настройка](#установка-и-настройка)
+- [REST API](#rest-api)
+
+
+## Установка и настройка
 Клонируем образ:
 
 ```
-<!-- git clone https://github.com/fe11fire/_shop.git . -->
+git clone git@github.com:fe11fire/maxmollcrm.git .
 ```
 
 Устанавливаем зависимости:
@@ -21,7 +32,6 @@ docker-compose up nginx --build -d
 docker-compose run --rm artisan migrate:fresh --seed
 ```
 
-Тестовое задание:
-```
-http://localhost:8000/
-```
+## REST API
+
+Примеры команд представлены в каталоге [requests](https://github.com/fe11fire/maxmollcrm/tree/main/requests)

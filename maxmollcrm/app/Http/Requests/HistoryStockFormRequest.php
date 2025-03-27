@@ -6,7 +6,7 @@ use App\Services\Enums\OrderStatus;
 use Illuminate\Validation\Rules\Enum;
 use Illuminate\Foundation\Http\FormRequest;
 
-class OrderFormRequest extends FormRequest
+class HistoryStockFormRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -24,8 +24,10 @@ class OrderFormRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer' => 'nullable|string',
-            'status' => ['nullable', new Enum(OrderStatus::class)],
+            'warehouse_id' => 'nullable|exists:warehouses,id',
+            'product_id' => 'nullable|exists:products,id',
+            'period_start' => 'nullable|multi_date_format:Y-m-d,Y-m-d H:i:s,Y-m,Y',
+            'period_end' => 'nullable|multi_date_format:Y-m-d,Y-m-d H:i:s,Y-m,Y',
             'per_page' => 'nullable|integer|gt:0',
             'page' => 'nullable|integer|gt:0',
         ];
@@ -34,9 +36,10 @@ class OrderFormRequest extends FormRequest
     public function messages()
     {
         return [
-            'customer.required' => 'Customer required',
-            'customer.*' => 'Customer must be string',
-            'status.*' => 'Status must be correct value',
+            'warehouse_id.*' => 'Warehouse not isset',
+            'product_id.*' => 'Product not isset',
+            'period_start.*' => 'period_start wrong format',
+            'period_end.*' => 'period_end wrong format',
         ];
     }
 }
