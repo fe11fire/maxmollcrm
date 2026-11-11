@@ -1,1 +1,3 @@
 .osp
+/maxmollcrm/.env
+/maxmollcrm/storage/logs/*.log
