@@ -101,6 +101,10 @@ class Stock extends Model
 
     public static function diffStocks(OrderItem $orderItem, int $difference): void
     {
+        if ($difference === 0) {
+            return;
+        }
+
 
         if ($difference > 0) {
             /**
