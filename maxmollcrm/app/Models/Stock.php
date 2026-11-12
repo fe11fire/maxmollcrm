@@ -3,23 +3,22 @@
 namespace App\Models;
 
 use App\Services\Enums\HistoryStockStatus;
-use Exception;
-use Ramsey\Uuid\Type\Integer;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
+use RuntimeException;
 
 class Stock extends Model
 {
-    /** @use HasFactory<\Database\Factories\StockFactory> */
     use HasFactory;
 
     public $timestamps = false;
 
-    protected $fillable = [
-        'stock',
-    ];
+    protected $fillable = ['product_id', 'warehouse_id', 'stock'];
+
+    protected $hidden = ['warehouse_id', 'product_id'];
 
     public function warehouse(): BelongsTo
     {
@@ -31,175 +30,110 @@ class Stock extends Model
         return $this->belongsTo(Product::class);
     }
 
-
-    /**
-     * Перенос товара со складов в заказ
-     *
-     * @param int $product_id
-     * @param int $count
-     * @param int $order_id для логгирования движения товара на складах
-     *
-     * @return void
-     */
-
     public static function subStocks(int $product_id, int $count, int $order_id): void
     {
-        /**
-         * Получаем список складов, на которых есть товар
-         */
-        $stocks = Stock::where('product_id', $product_id)->with('warehouse')->get();
-
-        /**
-         * Проверяем наличие необходимого для заказа
-         * числа товара на складах
-         */
-        if ($stocks->sum('stock') < $count) {
-            throw new Exception('Not enouth stocks of product = ' . $product_id);
+        self::validateQuantity($count);
+        if ($count === 0) {
+            return;
         }
 
-        /**
-         * Переносим товар со складов до тех пор, 
-         * пока в заказе потребность в товаре не будет равно 0
-         */
-        $i = 0;
-        while ($count > 0) {
-            /**
-             * Берем i-й склад и забираем с него весь товар (если потребность для заказа больше, числа товара на складе),
-             * либо ту часть, которая необходима для заказа
-             */
+        DB::transaction(function () use ($product_id, $count, $order_id) {
+            // The product row also serializes movements when no stock row exists yet.
+            Product::whereKey($product_id)->lockForUpdate()->firstOrFail();
+            $stocks = self::where('product_id', $product_id)
+                ->orderBy('warehouse_id')->lockForUpdate()->get();
 
-            /**
-             * Число товаров, которое забираем с i-го склада
-             */
-            $difference = min($count, $stocks[$i]->stock);
+            if ($stocks->sum('stock') < $count) {
+                throw new RuntimeException('Not enough stocks of product = '.$product_id);
+            }
 
-            /**
-             * Вычитаем товары из stocks
-             */
-            Stock::subStock($stocks[$i], $difference, $order_id);
-
-            /**
-             * Уменьшаем потребность товара в заказе на число изъятых со склада товаров
-             */
-            $count -= $difference;
-
-            /**
-             * Следующий склад
-             */
-            $i++;
-        }
+            foreach ($stocks as $stock) {
+                $quantity = min($count, $stock->stock);
+                if ($quantity > 0) {
+                    self::subStock($stock, $quantity, $order_id);
+                    $count -= $quantity;
+                }
+                if ($count === 0) {
+                    break;
+                }
+            }
+        }, 3);
     }
 
-    /**
-     * Перенос товара со складов в заказ или из заказа на склад
-     *
-     * @param OrderItem $orderItem
-     * @param int $difference если больше 0 - со складов в заказ, меньше 0 - из заказа на склад
-     *
-     * @return void
-     */
-
+    /** Positive difference reserves goods; negative difference returns them to the order warehouse. */
     public static function diffStocks(OrderItem $orderItem, int $difference): void
     {
         if ($difference === 0) {
             return;
         }
-
-
+        $order = $orderItem->order;
         if ($difference > 0) {
-            /**
-             * Перещаем товар в заказ со складов
-             */
-            self::subStocks($orderItem->product_id, $difference, $orderItem->order->id);
+            self::subStocks($orderItem->product_id, $difference, $order->id);
+
             return;
         }
 
-        /**
-         * Выбираем склад, на котором размещен заказ
-         */
-        $stock = Stock::where('product_id', $orderItem->product_id)->where('warehouse_id', $orderItem->order->warehouse_id)->first();
-
-        /**
-         * На складе товар отсутствует - добавляем его, количество делаем равным 0
-         */
-        if ($stock === null) {
-            $stock = DB::table('stocks')->insert([
-                'product_id' => $orderItem->product_id,
-                'warehouse_id' => $orderItem->order->warehouse_id,
-                'stock' => 0,
-            ]);
-            $stock = Stock::where('product_id', $orderItem->product_id)->where('warehouse_id', $orderItem->order->warehouse_id)->first();
-        }
-
-        /**
-         * Увеличиваем число товара на складе
-         */
-        Stock::addStock($stock, abs($difference), $orderItem->order->id);
+        $stock = new self;
+        $stock->product_id = $orderItem->product_id;
+        $stock->warehouse_id = $order->warehouse_id;
+        self::addStock($stock, abs($difference), $order->id);
     }
-
-    /**
-     * Увеличение числа товара на складе,
-     * логгирование
-     *
-     * @param Stock $stock
-     * @param int $difference
-     * @param int $order_id для логгирования движения товара на складе
-     *
-     * @return void
-     */
 
     public static function addStock(Stock $stock, int $difference, int $order_id): void
     {
-        DB::table('stocks')->where('product_id', $stock->product_id)->where('warehouse_id', $stock->warehouse_id)->increment('stock', $difference);
-
-        HistoryStock::create(
-            [
-                'warehouse_id' => $stock->warehouse_id,
-                'product_id' => $stock->product_id,
-                'stock' => $stock->stock + $difference,
-                'diff' => $difference,
-                'status' => HistoryStockStatus::FROM_ORDER->value,
-                'order_id' => $order_id,
-            ]
-        );
+        self::move($stock, $difference, $order_id, true);
     }
 
-    /**
-     * Уменьшение числа товара на складе,
-     * логгирование
-     *
-     * @param Stock $stock
-     * @param int $difference
-     * @param int $order_id для логгирования движения товара на складе
-     *
-     * @return void
-     */
     public static function subStock(Stock $stock, int $difference, int $order_id): void
     {
-        /**
-         * При равенстве числа товаров на складе и вычитаемого значения,
-         * удаляем товар со склада
-         */
-        if ($difference == $stock->stock) {
-            DB::table('stocks')->where('product_id', $stock->product_id)->where('warehouse_id', $stock->warehouse_id)->delete();
-        } else {
-            DB::table('stocks')->where('product_id', $stock->product_id)->where('warehouse_id', $stock->warehouse_id)->decrement('stock', $difference);
-        }
-
-        HistoryStock::create(
-            [
-                'warehouse_id' => $stock->warehouse_id,
-                'product_id' => $stock->product_id,
-                'stock' => $stock->stock - $difference,
-                'diff' => -$difference,
-                'status' => HistoryStockStatus::TO_ORDER->value,
-                'order_id' => $order_id,
-            ]
-        );
+        self::move($stock, $difference, $order_id, false);
     }
 
-    protected $hidden = [
-        'warehouse_id',
-        'product_id',
-    ];
+    private static function validateQuantity(int $quantity): void
+    {
+        if ($quantity < 0) {
+            throw new InvalidArgumentException('Stock quantity must not be negative.');
+        }
+    }
+
+    private static function move(Stock $stock, int $quantity, int $order_id, bool $return): void
+    {
+        self::validateQuantity($quantity);
+        if ($quantity === 0) {
+            return;
+        }
+
+        DB::transaction(function () use ($stock, $quantity, $order_id, $return) {
+            Product::whereKey($stock->product_id)->lockForUpdate()->firstOrFail();
+            $query = DB::table('stocks')->where('product_id', $stock->product_id)
+                ->where('warehouse_id', $stock->warehouse_id);
+            $current = (clone $query)->lockForUpdate()->first();
+            $before = (int) ($current->stock ?? 0);
+            if (! $return && $before < $quantity) {
+                throw new RuntimeException('Not enough stocks of product = '.$stock->product_id);
+            }
+            $difference = $return ? $quantity : -$quantity;
+            $after = $before + $difference;
+            if ($after === 0) {
+                $query->delete();
+            } elseif ($current === null) {
+                DB::table('stocks')->insert([
+                    'product_id' => $stock->product_id,
+                    'warehouse_id' => $stock->warehouse_id,
+                    'stock' => $after,
+                ]);
+            } else {
+                $query->update(['stock' => $after]);
+            }
+
+            HistoryStock::create([
+                'warehouse_id' => $stock->warehouse_id,
+                'product_id' => $stock->product_id,
+                'stock' => $after,
+                'diff' => $difference,
+                'status' => $return ? HistoryStockStatus::FROM_ORDER->value : HistoryStockStatus::TO_ORDER->value,
+                'order_id' => $order_id,
+            ]);
+        }, 3);
+    }
 }

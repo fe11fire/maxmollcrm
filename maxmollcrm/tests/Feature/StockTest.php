@@ -13,7 +13,9 @@ class StockTest extends TestCase
     use RefreshDatabase;
 
     private int $product;
+
     private int $warehouse;
+
     private int $order;
 
     protected function setUp(): void
@@ -76,5 +78,91 @@ class StockTest extends TestCase
 
         $this->assertDatabaseCount('stocks', 0);
         $this->assertDatabaseCount('history_stocks', 0);
+    }
+
+    public function test_stale_model_cannot_overdraw_stock(): void
+    {
+        $this->stock($this->warehouse, 10);
+        $first = Stock::first();
+        $stale = Stock::first();
+        Stock::subStock($first, 6, $this->order);
+        try {
+            Stock::subStock($stale, 6, $this->order);
+            $this->fail('Overdrawing stale stock must fail.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('Not enough', $exception->getMessage());
+        }
+        $this->assertDatabaseHas('stocks', ['stock' => 4]);
+        $this->assertDatabaseCount('history_stocks', 1);
+        Stock::addStock($stale, 2, $this->order);
+        $this->assertDatabaseHas('stocks', ['stock' => 6]);
+        $this->assertDatabaseHas('history_stocks', ['diff' => 2, 'stock' => 6]);
+    }
+
+    public function test_history_failure_rolls_back_entire_multiwarehouse_deduction(): void
+    {
+        $other = DB::table('warehouses')->insertGetId(['name' => 'Other']);
+        $this->stock($this->warehouse, 2);
+        $this->stock($other, 3);
+        $calls = 0;
+        \App\Models\HistoryStock::creating(function () use (&$calls) {
+            if (++$calls === 2) {
+                throw new \RuntimeException('History failure');
+            }
+        });
+        try {
+            Stock::subStocks($this->product, 4, $this->order);
+            $this->fail('Expected history failure.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('History failure', $exception->getMessage());
+        } finally {
+            \App\Models\HistoryStock::flushEventListeners();
+        }
+        $this->assertDatabaseHas('stocks', ['warehouse_id' => $this->warehouse, 'stock' => 2]);
+        $this->assertDatabaseHas('stocks', ['warehouse_id' => $other, 'stock' => 3]);
+        $this->assertDatabaseCount('history_stocks', 0);
+    }
+
+    public function test_exact_deduction_removes_stock_and_logs_zero_balance(): void
+    {
+        $this->stock($this->warehouse, 5);
+        Stock::subStocks($this->product, 5, $this->order);
+        $this->assertDatabaseCount('stocks', 0);
+        $this->assertDatabaseHas('history_stocks', ['stock' => 0, 'diff' => -5]);
+    }
+
+    public function test_negative_quantity_is_rejected_without_changes(): void
+    {
+        $this->stock($this->warehouse, 5);
+        foreach (['addStock', 'subStock'] as $method) {
+            try {
+                Stock::$method(Stock::first(), -1, $this->order);
+                $this->fail('Negative quantity must fail.');
+            } catch (\InvalidArgumentException $exception) {
+                $this->assertStringContainsString('negative', $exception->getMessage());
+            }
+        }
+        $this->assertDatabaseHas('stocks', ['stock' => 5]);
+        $this->assertDatabaseCount('history_stocks', 0);
+    }
+
+    public function test_database_rejects_duplicate_stock_rows(): void
+    {
+        $this->stock($this->warehouse, 3);
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->stock($this->warehouse, 4);
+    }
+
+    public function test_database_rejects_duplicate_order_items(): void
+    {
+        $this->item();
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->item();
+    }
+
+    public function test_database_rejects_negative_stock(): void
+    {
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->stock($this->warehouse, -1);
     }
 }
