@@ -1,0 +1,8 @@
+.git
+.osp
+.codex
+docker/volume
+maxmollcrm/vendor
+maxmollcrm/node_modules
+maxmollcrm/.env
+maxmollcrm/storage/logs

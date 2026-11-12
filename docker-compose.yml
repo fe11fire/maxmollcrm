@@ -1,5 +1,9 @@
 services:
   php:
+    working_dir: /var/www/html
+    depends_on:
+      mysql:
+        condition: service_healthy
     build:
       dockerfile: docker/php/Dockerfile
     volumes:
@@ -12,12 +16,18 @@ services:
       - './maxmollcrm:/var/www/html'
       - './docker/nginx/conf.d:/etc/nginx/conf.d'
     depends_on:
-      - mysql
-      - php
-      - phpmyadmin
+      mysql:
+        condition: service_healthy
+      php:
+        condition: service_started
 
   mysql:
     image: mysql:8
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql -h 127.0.0.1 -u$$MYSQL_USER -D $$MYSQL_DATABASE -e 'SELECT 1'"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
     ports:
       - 3316:3306
     environment:
@@ -37,6 +47,7 @@ services:
       - PMA_PORT=3306
 
   artisan:
+    working_dir: /var/www/html
     build:
       dockerfile: docker/php/Dockerfile
     volumes:
@@ -44,6 +55,7 @@ services:
     entrypoint: ["php", "/var/www/html/artisan"]
 
   composer:
+    working_dir: /var/www/html
     build:
       dockerfile: docker/composer/Dockerfile
     volumes:
