@@ -29,11 +29,6 @@ Accept: application/json
     "id": 1
 }
 
-### Resume order (another version)
-GET {{host}}/order/1/resume
-Content-Type: application/json
-Accept: application/json
-
 ### Cancel order
 PUT {{host}}/order/cancel
 Content-Type: application/json
@@ -43,11 +38,6 @@ Accept: application/json
     "id": 1
 }
 
-### Cancel order (another version)
-GET {{host}}/order/1/cancel
-Content-Type: application/json
-Accept: application/json
-
 ### Complete order
 PUT {{host}}/order/complete
 Content-Type: application/json
@@ -56,11 +46,6 @@ Accept: application/json
 {
     "id": 1
 }
-
-### Complete order (another version)
-GET {{host}}/order/1/complete
-Content-Type: application/json
-Accept: application/json
 
 ### Update order 1
 PUT {{host}}/order

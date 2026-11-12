@@ -23,10 +23,10 @@ class PutOrderFormRequest extends FormRequest
     {
         return [
             'id' => 'required|exists:orders,id',
-            'customer' => 'nullable|string',
+            'customer' => 'nullable|string|max:255',
             'items' => 'nullable|array',
-            'items.*.id' => 'required|exists:products',
-            'items.*.count' => 'gt:0',
+            'items.*.id' => 'required|integer|distinct|exists:products,id',
+            'items.*.count' => 'required|integer|min:1|max:2147483647',
         ];
     }
 

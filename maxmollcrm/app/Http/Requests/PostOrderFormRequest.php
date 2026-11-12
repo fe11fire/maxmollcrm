@@ -22,10 +22,10 @@ class PostOrderFormRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer' => 'required|string',
+            'customer' => 'required|string|max:255',
             'items' => 'required|array',
-            'items.*.id' => 'required|exists:products',
-            'items.*.count' => 'gt:0',
+            'items.*.id' => 'required|integer|distinct|exists:products,id',
+            'items.*.count' => 'required|integer|min:1|max:2147483647',
             'warehouse_id' => 'nullable|exists:warehouses,id',
         ];
     }

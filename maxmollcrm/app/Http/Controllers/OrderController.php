@@ -2,22 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use Exception;
+use App\Actions\Order\CancelAction;
+use App\Actions\Order\CompleteAction;
+use App\Actions\Order\ResumeAction;
+use App\Http\Requests\OrderFormRequest;
+use App\Http\Requests\PostOrderFormRequest;
+use App\Http\Requests\PutOrderFormRequest;
+use App\Http\Resources\OrderCollection;
 use App\Models\Order;
-use App\Models\Stock;
 use App\Models\OrderItem;
+use App\Models\Stock;
 use App\Models\Warehouse;
+use App\Services\Enums\OrderStatus;
+use Exception;
+use Illuminate\Http\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
-use App\Actions\Order\CancelAction;
-use App\Actions\Order\ResumeAction;
-use App\Services\Enums\OrderStatus;
-use App\Actions\Order\CompleteAction;
-use App\Http\Requests\OrderFormRequest;
-use App\Http\Resources\OrderCollection;
-use App\Http\Requests\PutOrderFormRequest;
-use App\Http\Requests\PostOrderFormRequest;
-use Illuminate\Http\Response;
 
 class OrderController extends Controller
 {
@@ -32,29 +32,14 @@ class OrderController extends Controller
         );
     }
 
-    public function getResume(ResumeAction $action, $id)
-    {
-        return $action($id);
-    }
-
     public function resume(ResumeAction $action, PutOrderFormRequest $request)
     {
         return $action($request->safe()->id);
     }
 
-    public function getCancel(CancelAction $action, $id)
-    {
-        return $action($id);
-    }
-
     public function cancel(CancelAction $action, PutOrderFormRequest $request)
     {
         return $action($request->safe()->id);
-    }
-
-    public function getComplete(CompleteAction $action, $id)
-    {
-        return $action($id);
     }
 
     public function complete(CompleteAction $action, PutOrderFormRequest $request)
@@ -67,10 +52,10 @@ class OrderController extends Controller
         try {
             /** Проводим серию транзакций */
             DB::transaction(function () use ($request) {
-                /** 
+                /**
                  * Получение заказа для обновления
                  */
-                $order = Order::findOrFail($request->id);
+                $order = Order::lockForUpdate()->findOrFail($request->id);
 
                 /**
                  * Обновить можно только активный заказ
@@ -84,6 +69,10 @@ class OrderController extends Controller
                  * то проводим перерасчет
                  */
                 if (($items = $request->safe()->items) !== null) {
+                    // Lock the full product set before returns and deductions, in one order.
+                    $productIds = OrderItem::where('order_id', $order->id)->pluck('product_id')
+                        ->merge(Arr::pluck($items, 'id'))->unique()->sort()->values();
+                    \App\Models\Product::whereIn('id', $productIds)->orderBy('id')->lockForUpdate()->get();
 
                     /**
                      * Исключаем из заказа все товары,
@@ -104,7 +93,7 @@ class OrderController extends Controller
                     /**
                      * Для товаров items из запроса проводим корректировку количества
                      */
-                    foreach ($items as $item) {
+                    foreach (collect($items)->sortBy('id') as $item) {
 
                         /**
                          * Получаем список товаров в заказе из items запроса
@@ -129,7 +118,7 @@ class OrderController extends Controller
                          * Получаем значение, которое нужно добавить / убавить.
                          * Если разница равна 0, то количесвто товара в заказе не изменилось, пропускаем блок
                          */
-                        if (($difference = ($item['count'] - $order_item->count)) <> 0) {
+                        if (($difference = ($item['count'] - $order_item->count)) != 0) {
 
                             /**
                              * Производим перемещение недостатка товара в заказ со склада
@@ -139,9 +128,9 @@ class OrderController extends Controller
                             /**
                              * Обновляем количество товара в заказе
                              */
-                            $order_item->update(['count' => DB::raw('count + ' . $difference)]);
+                            $order_item->update(['count' => DB::raw('count + '.$difference)]);
                         }
-                        
+
                     }
                 }
 
@@ -152,10 +141,11 @@ class OrderController extends Controller
                 if (($customer = $request->safe()->customer) !== null) {
                     $order->update(['customer' => $customer]);
                 }
-            });
+            }, 3);
         } catch (\Exception $e) {
             return response($e->getMessage(), 400);
         }
+
         return response(status: 200);
     }
 
@@ -164,17 +154,17 @@ class OrderController extends Controller
         try {
             /** Проводим серию транзакций */
             DB::transaction(function () use ($request) {
-                /** 
-                 * В задании логика выбора склада 
-                 * при создании заказа не описана. 
-                 * Если значение warehouse_id не передано, 
+                /**
+                 * В задании логика выбора склада
+                 * при создании заказа не описана.
+                 * Если значение warehouse_id не передано,
                  * то берется первый из списка
                  */
                 $warehouse_id = $request->safe()->warehouse_id == null ? Warehouse::first()->id : $request->safe()->warehouse_id;
 
                 /**
-                 * @var Order $order 
-                 * 
+                 * @var Order $order
+                 *
                  * Создаем заказ
                  * */
                 $order = Order::create([
@@ -182,30 +172,30 @@ class OrderController extends Controller
                     'customer' => $request->customer,
                 ]);
 
-                foreach ($request->items as $product) {
+                foreach (collect($request->validated('items'))->sortBy('id') as $product) {
                     /**
                      * Собираем товар в заказ со складов
                      */
                     Stock::subStocks($product['id'], $product['count'], $order->id);
                 }
 
-                foreach ($request->items as $product) {
+                foreach (collect($request->validated('items'))->sortBy('id') as $product) {
                     /**
                      * Сохраняем товар из заказа в order_items
                      */
-                    OrderItem::upsert(
+                    OrderItem::create(
                         [
                             'order_id' => $order->id,
                             'product_id' => $product['id'],
                             'count' => $product['count'],
-                        ],
-                        ['count' => DB::raw('count + ' . $product['count'])]
+                        ]
                     );
                 }
-            });
+            }, 3);
         } catch (\Exception $e) {
             return response($e->getMessage(), 400);
         }
+
         return response(status: 200);
     }
 }
