@@ -1,6 +1,6 @@
 services:
   php:
-    build: 
+    build:
       dockerfile: docker/php/Dockerfile
     volumes:
       - './maxmollcrm:/var/www/html'
@@ -37,15 +37,30 @@ services:
       - PMA_PORT=3306
 
   artisan:
-    build: 
+    build:
       dockerfile: docker/php/Dockerfile
     volumes:
       - './maxmollcrm:/var/www/html'
     entrypoint: ["php", "/var/www/html/artisan"]
 
   composer:
-    build: 
+    build:
       dockerfile: docker/composer/Dockerfile
     volumes:
       - './maxmollcrm:/var/www/html'
-  
+
+  mysql-test:
+    image: mysql:8
+    profiles: [test]
+    environment:
+      MYSQL_ROOT_PASSWORD: test-root
+      MYSQL_DATABASE: maxmollcrm_test
+      MYSQL_USER: test
+      MYSQL_PASSWORD: test
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql -h 127.0.0.1 -u$$MYSQL_USER -D $$MYSQL_DATABASE -e 'SELECT 1'"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
